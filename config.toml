@@ -1,0 +1,69 @@
+# Trading bot settings. Changes apply the next time the bot starts.
+
+[strategy]
+mode = "daily"           # "daily": buy dips in an uptrend on the list below and hold while the trend lasts (runs once a day at the open)
+                         # "intraday": the earlier 15-minute SKHY mean reversion bot (uses [market], [risk] and [execution] below)
+
+[daily]
+# Symbols to watch. The 30 ETFs are the list the strategy was tested on; a symbol with fewer than
+# 201 daily bars (SKHY until about April 2027) is skipped automatically until it has enough history.
+symbols = [
+    "SPY", "QQQ", "IWM", "DIA", "MDY",                                              # US stock indexes
+    "XLK", "XLF", "XLE", "XLV", "XLI", "XLY", "XLP", "XLU", "XLB", "XLRE", "XLC",   # US sectors
+    "SMH", "IBB", "VNQ",                                                            # chips, biotech, property
+    "EFA", "EEM", "EWJ", "FXI",                                                     # overseas stocks
+    "TLT", "IEF", "HYG", "LQD",                                                     # bonds
+    "GLD", "SLV", "USO",                                                            # gold, silver, oil
+    "SKHY",
+    # Large US companies (the Dow Jones members as of January 2016, the list the stock tests used)
+    "AAPL", "AXP", "BA", "CAT", "CSCO", "CVX", "DIS", "GE", "GS", "HD", "IBM", "INTC", "JNJ", "JPM", "KO",
+    "MCD", "MMM", "MRK", "MSFT", "NKE", "PFE", "PG", "RTX", "TRV", "UNH", "V", "VZ", "WMT", "XOM",
+]
+# Daily picks: each morning the whole list is ranked by its return over rank_lookback days, and the bot only
+# buys dips in the strongest rank_top_pct of it (strongest first when cash is short). 100 switches ranking off.
+rank_lookback = 252
+rank_top_pct = 50.0
+trend_sma = 200            # uptrend filter: only buy when the close is above this many days' average; sell when it falls below
+fast_ema = 20              # sell when this EMA crosses below slow_ema (the trend has turned)
+slow_ema = 50
+stop_atr_multiple = 3.0    # stop-loss sits this many daily ATRs below the entry price
+risk_per_trade_pct = 1.0   # % of account equity lost if the stop-loss is hit
+max_position_pct = 20.0    # cap on any one position, as % of account equity; the bot never borrows
+core_symbol = "SPY"        # a plain holding kept alongside the strategy: no stop-loss, no trend exit, simply held
+core_pct = 50.0            # share of the account kept in core_symbol; the strategy trades the rest. 0 turns the core off
+core_rebalance_band_pct = 5.0   # only top up or trim the core when it is more than this far (in % of the account) from core_pct
+history = "3y"           # daily history to download each run (needs more than trend_sma days)
+
+[memory]
+# Two files in the data folder: ledger.csv (every trade and its real outcome) and learnings.md (lessons).
+# When enabled, the bot reads both before each trade and skips a buy that repeats a setup with a losing record
+# on that symbol. Exits are never blocked.   python bot.py --replay-raw | --replay-memory | --memory-reset
+enabled = true
+cooldown_days = 20         # after a losing trade, wait this many days before buying the same symbol again (0 = off)
+min_losses = 4           # real losses on the same symbol + setup (and more losses than wins, and a net loss) before it is skipped
+
+# ---- settings below are for mode = "intraday", except [indicators] bb/atr and [backtest], which both modes use ----
+
+[market]
+symbol = "SKHY"          # stock to trade
+interval = "15m"         # bar size pulled from yfinance
+lookback_days = 60       # history to fetch (60 days is yfinance's limit for 15m bars)
+
+[indicators]
+ema_period = 200         # trend filter: only buy when price is above this EMA
+bb_period = 20           # Bollinger Band lookback
+bb_std = 2.0             # Bollinger Band width in standard deviations
+atr_period = 14          # ATR lookback (volatility measure)
+
+[risk]
+risk_per_trade_pct = 0.25  # % of account equity lost if the stop-loss is hit; shares = that amount / (stop_atr_multiple x ATR)
+stop_atr_multiple = 1.5    # stop-loss sits this many ATRs below the entry price
+max_position_pct = 50.0    # safety cap on position size, as % of account equity (overrides the ATR sizing when hit)
+
+[execution]
+entry_order = "limit"         # "limit": buy at the signal bar's closing price, cancelled if not filled within one bar. "market": buy at once at whatever price is on offer
+flatten_before_close = true   # true: sell any open position (and cancel any orders) in this symbol during the last bar of the day, so nothing is held overnight
+time_in_force = "gtc"         # "gtc" keeps the take-profit/stop-loss working if the bot is not running at the close; "day" cancels them at the close
+
+[backtest]
+slippage_pct = 0.05           # cost assumed for every market-order fill (market entries, stop-losses, end-of-day sales), as % of price; about half of SKHY's typical bid-ask spread
